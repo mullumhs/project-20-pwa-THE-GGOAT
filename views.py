@@ -10,33 +10,25 @@ from models import db, Pokemon # Also import your database model here
 def init_routes(app):
 
     @app.route('/', methods=['GET'])
-    def get_items():
+    def index():
         # This route should retrieve all items from the database and display them on the page.
         return render_template('index.html', message='Displaying all items')
 
 
 
-    @app.route('/add', methods=['POST'])
+    @app.route('/add', methods=['GET', 'POST'])
     def create_item():
         if request.method == 'POST':
+            new_pokemon = Pokemon(
+                name=request.form['name'],
+                type1=request.form['type1'],
+                type2=request.form['type2'],
+                rating=float(request.form['Gen'])
+            )
+            db.session.add(new_pokemon)
+            db.session.commit()
 
-        new_pokemon = Pokemon(
-
-            name=request.form['name'],
-
-            type1=request.form['type1'],
-
-            type2=request.form['year'],
-
-            rating=float(request.form['rating'])
-
-        )
-
-        db.session.add(new_pokemon)
-
-        db.session.commit()
-
-        return redirect(url_for('index'))
+            return redirect(url_for('index'))
 
         return render_template('add.html')
         # This route should handle adding a new item to the database.
