@@ -11,8 +11,10 @@ def init_routes(app):
 
     @app.route('/', methods=['GET'])
     def index():
+        collection = Pokemon.query.all()
+
         # This route should retrieve all items from the database and display them on the page.
-        return render_template('index.html', message='Displaying all items')
+        return render_template('index.html', collection=collection)
 
 
 
@@ -23,16 +25,15 @@ def init_routes(app):
                 name=request.form['name'],
                 type1=request.form['type1'],
                 type2=request.form['type2'],
-                rating=float(request.form['Gen'])
+                gen=int(request.form['gen'])
             )
             db.session.add(new_pokemon)
             db.session.commit()
 
             return redirect(url_for('index'))
-
-        return render_template('add.html')
-        # This route should handle adding a new item to the database.
-        return render_template('index.html', message='Item added successfully')
+        return render_template('add.html')        
+            # This route should handle adding a new item to the database.
+       
 
 
 
