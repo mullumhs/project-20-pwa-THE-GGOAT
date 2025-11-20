@@ -48,3 +48,8 @@ def init_routes(app):
     def delete_item():
         # This route should handle deleting an existing item identified by the given ID.
         return render_template('index.html', message=f'Item deleted successfully')
+    
+    @app.route('/team', methods=['GET'])
+    def view_team():
+        collection = Pokemon.query.all()
+        return render_template('team.html', collection=collection )
