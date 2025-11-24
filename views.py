@@ -1,5 +1,6 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 from models import db, Pokemon # Also import your database model here
+import requests
 
 # Define your routes inside the 'init_routes' function
 # Feel free to rename the routes and functions as you see fit
@@ -44,12 +45,31 @@ def init_routes(app):
 
 
 
-    @app.route('/delete', methods=['POST'])
-    def delete_item():
+    @app.route('/delete/<id>', methods=['GET'])
+    def delete_item(id):
         # This route should handle deleting an existing item identified by the given ID.
-        return render_template('index.html', message=f'Item deleted successfully')
+        
+
+        item = Pokemon.query.get(id)  # Fetch item by ID
+
+        db.session.delete(item)  	# Delete item
+
+        db.session.commit()  		# Commit changes
+        return redirect(url_for('view_team'))
     
     @app.route('/team', methods=['GET'])
     def view_team():
+
+        # https://pokeapi.co/api/v2/pokemon/ditto
+
         collection = Pokemon.query.all()
         return render_template('team.html', collection=collection )
+    
+    @app.route('/pokemon/<name>', methods=['GET'])
+    def view_pokemon(name):
+        print("hello")
+        url = f"https://pokeapi.co/api/v2/pokemon/{name}"
+        r = requests.get(url)
+        print(r)
+        data=r.json()
+        return render_template('single.html', data=jsonify(data) )
