@@ -57,19 +57,42 @@ def init_routes(app):
         db.session.commit()  		# Commit changes
         return redirect(url_for('view_team'))
     
-    @app.route('/team', methods=['GET'])
+    @app.route('/test', methods=['GET'])
     def view_team():
-
-        # https://pokeapi.co/api/v2/pokemon/ditto
-
-        collection = Pokemon.query.all()
-        return render_template('team.html', collection=collection )
+        url = "https://pokeapi.co/api/v2/pokemon/pikachu"  # example with Pikachu
+        response = requests.get(url)
+        data = response.json()
+        print(data.keys())  # shows top-level keys in the JSON
+        return render_template('team.html', data=data)
     
-    @app.route('/pokemon/<name>', methods=['GET'])
-    def view_pokemon(name):
+    @app.route('/team', methods=['GET'])
+    
+    def view_pokemon():
+
+        collection1 = Pokemon.query.all()
         print("hello")
-        url = f"https://pokeapi.co/api/v2/pokemon/{name}"
-        r = requests.get(url)
-        print(r)
-        data=r.json()
-        return render_template('single.html', data=jsonify(data) )
+        meow = []
+        for item in collection1:
+            #Main Data
+            url = f"https://pokeapi.co/api/v2/pokemon/{item.name}"
+            r = requests.get(url)
+            print(r)
+            data=r.json()
+
+            # Species data for flavor text
+            species_url = f"https://pokeapi.co/api/v2/pokemon-species/{item.name}"
+            r2 = requests.get(species_url)
+            species_data = r2.json()
+
+            # Get the first English flavor text entry
+            entry = next(
+                e['flavor_text'] for e in species_data['flavor_text_entries']
+                if e['language']['name'] == 'en'
+            )
+
+            # Attach flavor text to the Pokémon dict
+            data['flavor_text'] = entry
+            data['db_id'] = item.id 
+            
+            meow.append(data)
+        return render_template('team.html', meow=meow)

@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>li nc</title>
+    <title>{{ data.name | capitalize }}</title>
 </head>
 <body>
-
-    {% for data in meow %}
-
     <h1>{{ data.name | capitalize }}</h1>
     <img src="{{ data.sprites.front_default }}" alt="{{ data.name }}">
 
@@ -30,6 +27,4 @@
             <li>{{ stat.stat.name }}: {{ stat.base_stat }}</li>
         {% endfor %}
     </ul>
-
-    {% endfor %}
 </body>
