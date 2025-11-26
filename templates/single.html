@@ -1,11 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>li nc</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-    {% for data in meow %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+    <h1>Welcome to My Inventory App</h1>
+
+    <!-- Add your page-specific content here -->
+     {% for data in meow %}
 
     <h1>{{ data.name | capitalize }}</h1>
     <img src="{{ data.sprites.front_default }}" alt="{{ data.name }}">
@@ -32,4 +34,7 @@
     </ul>
 
     {% endfor %}
-</body>
+
+{% endblock %}
+
+

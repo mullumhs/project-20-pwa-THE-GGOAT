@@ -63,7 +63,7 @@ def init_routes(app):
         response = requests.get(url)
         data = response.json()
         print(data.keys())  # shows top-level keys in the JSON
-        return render_template('team.html', data=data)
+        return render_template('single.html', data=data)
     
     @app.route('/team', methods=['GET'])
     
