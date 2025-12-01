@@ -48,14 +48,13 @@ def init_routes(app):
     @app.route('/delete/<id>', methods=['GET'])
     def delete_item(id):
         # This route should handle deleting an existing item identified by the given ID.
-        
-
         item = Pokemon.query.get(id)  # Fetch item by ID
 
         db.session.delete(item)  	# Delete item
 
         db.session.commit()  		# Commit changes
         return redirect(url_for('view_team'))
+    
     
     @app.route('/test', methods=['GET'])
     def view_team():
