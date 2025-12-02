@@ -12,6 +12,10 @@
                     <div class="card-body">
                     <h5 class="card-title">
                       {{ pokemon['name'] }}
+                      {{pokemon['type']}}
+                      {% for type in pokemon.types %}
+                      {{ type.type.name }}
+                        {% endfor %}
                       
                     </h5>
                     <p class="card-text"> <p><strong>Pokedex Entry:</strong> {{ pokemon.flavor_text }}</p></p>

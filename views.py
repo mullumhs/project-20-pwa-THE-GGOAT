@@ -67,9 +67,14 @@ def init_routes(app):
     @app.route('/team', methods=['GET'])
     
     def view_pokemon():
-
-        collection1 = Pokemon.query.all()
-        print("hello")
+        collection1 = ''
+        query = request.args.get('query', '')
+        print(query)
+        if not query:
+            print("empty")                     
+            collection1 = Pokemon.query.all()
+        else:
+            collection1 = Pokemon.query.filter(Pokemon.type1 == query)
         meow = []
         for item in collection1:
             #Main Data
