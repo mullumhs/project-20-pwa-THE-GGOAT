@@ -49,7 +49,9 @@ def init_routes(app):
     def delete_item(id):
         # This route should handle deleting an existing item identified by the given ID.
         item = Pokemon.query.get(id)  # Fetch item by ID
-
+        if item is None:
+            flash("Item not found", "error")
+            return redirect(url_for("index"))
         db.session.delete(item)  	# Delete item
 
         db.session.commit()  		# Commit changes
