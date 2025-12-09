@@ -1,26 +1,241 @@
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>peak</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+    <style>
+      /* small layout nicety */
+      .page-container { padding: 2rem; max-width: 720px; margin: 0 auto; }
+      .spinner-inline { width: 1rem; height: 1rem; vertical-align: text-bottom; margin-left: .5rem; }
+    </style>
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-    <form method="post">
+    <h1>Pokemon item creator</h1>
 
-      <input type="text" name="name" placeholder="Name" required>
+    <form id="itemForm" method="post" novalidate>
+      <div class="mb-3">
+        <label class="form-label">Name</label>
+        <div class="input-group">
+          <input id="name" name="name" type="text" class="form-control" placeholder="Name" required autocomplete="off">
+          <span id="nameSpinner" class="input-group-text bg-white border-start-0" style="display:none;">
+            <div class="spinner-border spinner-border-sm spinner-inline" role="status" aria-hidden="true"></div>
+          </span>
+        </div>
+      </div>
 
-      <input type="text" name="type1" placeholder="Type1" required>
+      <div class="mb-3">
+        <label class="form-label">Type1</label>
+        <input id="type1" name="type1" type="text" class="form-control" placeholder="Type1" required>
+      </div>
 
-      <input type="text" name="type2" placeholder="Type2" unrequired>
+      <div class="mb-3">
+        <label class="form-label">Type2</label>
+        <input id="type2" name="type2" type="text" class="form-control" placeholder="Type2 (optional)">
+      </div>
 
-      <input type="number" name="gen" placeholder="Gen" required>
+      <div class="mb-3">
+        <label class="form-label">Gen</label>
+        <input id="gen" name="gen" type="number" class="form-control" placeholder="Gen" required min="1">
+      </div>
 
-      <input type="submit" value="Create Item">
+      <div class="mb-3">
+        <button id="submitBtn" type="submit" class="btn btn-primary" disabled>Create Item</button>
+      </div>
 
+      <div id="formMessages" aria-live="polite"></div>
     </form>
-    
-    
-</body>
+
+    <script>
+      (function () {
+        const nameInput = document.getElementById('name');
+        const type1Input = document.getElementById('type1');
+        const genInput = document.getElementById('gen');
+        const submitBtn = document.getElementById('submitBtn');
+        const messages = document.getElementById('formMessages');
+        const nameSpinner = document.getElementById('nameSpinner');
+
+        // state
+        let pokemonExists = false;
+        let checking = false;
+        let debounceTimer = null;
+        const DEBOUNCE_MS = 1000; // wait 1 second after typing stops
+
+        // helper: show message(s)
+        function setMessage(text, kind = 'danger') {
+          if (!text) {
+            messages.innerHTML = '';
+            return;
+          }
+          messages.innerHTML = `<div class="alert alert-${kind} py-2">${escapeHtml(text)}</div>`;
+        }
+
+        // escape to avoid injection if user types weird characters
+        function escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        }
+
+        // show/hide spinner
+        function showSpinner(show) {
+          nameSpinner.style.display = show ? '' : 'none';
+        }
+
+        // validate required fields (except type2)
+        function requiredFieldsFilled() {
+          return nameInput.value.trim() !== '' &&
+                 type1Input.value.trim() !== '' &&
+                 genInput.value.trim() !== '';
+        }
+
+        // update submit button enabled/disabled based on state
+        function updateSubmitState() {
+          // disable while checking
+          if (checking) {
+            submitBtn.disabled = true;
+            return;
+          }
+
+          // required fields must be filled and pokemon must exist
+          if (!requiredFieldsFilled()) {
+            submitBtn.disabled = true;
+            // show which fields are missing
+            const missing = [];
+            if (nameInput.value.trim() === '') missing.push('Name');
+            if (type1Input.value.trim() === '') missing.push('Type1');
+            if (genInput.value.trim() === '') missing.push('Gen');
+            setMessage('Please fill out required fields: ' + missing.join(', '), 'danger');
+            return;
+          }
+
+          // if name is filled but we haven't confirmed existence yet
+          if (!pokemonExists) {
+            submitBtn.disabled = true;
+            setMessage('Pokemon not found. Check the name or wait for the verification spinner to finish.', 'danger');
+            return;
+          }
+
+          // all good
+          submitBtn.disabled = false;
+          setMessage('All good — you can submit the form.', 'success');
+        }
+
+        // check pokemon existence via PokeAPI
+        async function checkPokemon(name) {
+          const normalized = name.trim().toLowerCase();
+          if (!normalized) {
+            pokemonExists = false;
+            checking = false;
+            showSpinner(false);
+            updateSubmitState();
+            return;
+          }
+
+          checking = true;
+          pokemonExists = false;
+          showSpinner(true);
+          setMessage('Checking Pokémon name...', 'info');
+
+          try {
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(normalized)}`, { method: 'GET' });
+            if (res.ok) {
+              // found
+              pokemonExists = true;
+              checking = false;
+              showSpinner(false);
+              updateSubmitState();
+            } else if (res.status === 404) {
+              // not found
+              pokemonExists = false;
+              checking = false;
+              showSpinner(false);
+              updateSubmitState();
+            } else {
+              // other server error
+              pokemonExists = false;
+              checking = false;
+              showSpinner(false);
+              setMessage('Error checking Pokémon name (server returned ' + res.status + ').', 'danger');
+              updateSubmitState();
+            }
+          } catch (err) {
+            // network error
+            pokemonExists = false;
+            checking = false;
+            showSpinner(false);
+            setMessage('Network error while checking Pokémon name. Please check your connection and try again.', 'danger');
+            updateSubmitState();
+          }
+        }
+
+        // debounce wrapper
+        function scheduleCheck() {
+          // clear previous timer
+          if (debounceTimer) clearTimeout(debounceTimer);
+
+          // if name empty, cancel check immediately
+          if (nameInput.value.trim() === '') {
+            pokemonExists = false;
+            checking = false;
+            showSpinner(false);
+            updateSubmitState();
+            return;
+          }
+
+          // set checking state and show spinner immediately so user sees feedback
+          checking = true;
+          showSpinner(true);
+          setMessage('Waiting to check Pokémon name...', 'info');
+          updateSubmitState();
+
+          debounceTimer = setTimeout(() => {
+            checkPokemon(nameInput.value);
+            debounceTimer = null;
+          }, DEBOUNCE_MS);
+        }
+
+        // attach events
+        nameInput.addEventListener('input', () => {
+          // whenever name changes, we must re-validate
+          pokemonExists = false;
+          scheduleCheck();
+        });
+
+        // other required fields should trigger validation on input
+        [type1Input, genInput].forEach(el => {
+          el.addEventListener('input', () => {
+            // if required fields are empty, show message; otherwise update state
+            updateSubmitState();
+          });
+        });
+
+        // initial validation on load
+        updateSubmitState();
+
+        // prevent form submission if disabled (extra safety)
+        document.getElementById('itemForm').addEventListener('submit', function (e) {
+          if (submitBtn.disabled) {
+            e.preventDefault();
+            setMessage('Cannot submit: fix the issues above before submitting.', 'danger');
+            return;
+          }
+          // otherwise allow normal submit (or you can handle via AJAX here)
+        });
+
+        // accessibility: hide spinner from screen readers when not visible
+        const observer = new MutationObserver(() => {
+          nameSpinner.setAttribute('aria-hidden', nameSpinner.style.display === 'none' ? 'true' : 'false');
+        });
+        observer.observe(nameSpinner, { attributes: true, attributeFilter: ['style'] });
+
+      })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  </body>
 </html>
+{% endblock %}
