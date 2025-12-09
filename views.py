@@ -45,7 +45,7 @@ def init_routes(app):
 
 
 
-    @app.route('/delete/<id>', methods=['GET'])
+    @app.route('/delete/<id>', methods=['POST'])
     def delete_item(id):
         # This route should handle deleting an existing item identified by the given ID.
         item = Pokemon.query.get(id)  # Fetch item by ID
@@ -70,13 +70,18 @@ def init_routes(app):
     
     def view_pokemon():
         collection1 = ''
-        query = request.args.get('query', '')
-        print(query)
-        if not query:
+        type1 = request.args.get('type1', '')
+        type2 = request.args.get('type2', '')
+        print(type1, type2)
+        if not type1 and not type2:
             print("empty")                     
             collection1 = Pokemon.query.all()
+        elif not type2:
+            collection1 = Pokemon.query.filter(Pokemon.type1 == type1)
+        elif not type1:
+            collection1 = Pokemon.query.filter(Pokemon.type2 == type2)
         else:
-            collection1 = Pokemon.query.filter(Pokemon.type1 == query)
+            collection1 = Pokemon.query.filter(Pokemon.type2 == type2, Pokemon.type1 == type1)
         meow = []
         for item in collection1:
             #Main Data
