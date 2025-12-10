@@ -55,7 +55,7 @@ def init_routes(app):
         db.session.delete(item)  	# Delete item
 
         db.session.commit()  		# Commit changes
-        return redirect(url_for('view_team'))
+        return redirect(url_for('view_pokemon'))
     
     
     @app.route('/test', methods=['GET'])
@@ -77,6 +77,7 @@ def init_routes(app):
             print("empty")                     
             collection1 = Pokemon.query.all()
         elif not type2:
+            print(type2)
             collection1 = Pokemon.query.filter(Pokemon.type1 == type1)
         elif not type1:
             collection1 = Pokemon.query.filter(Pokemon.type2 == type2)
