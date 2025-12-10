@@ -7,7 +7,7 @@ class Pokemon(db.Model):
     name = db.Column(db.String(32), nullable=True)
     type1 = db.Column(db.String(16), nullable=True)
     type2 = db.Column(db.String(16), nullable=True)
-   
+    shiny = db.Column(db.Boolean, nullale=False, defult=False)
     gen = db.Column(db.Integer, nullable=True)
     
 
