@@ -2,6 +2,7 @@ from flask import Flask
 from models import db
 from views import init_routes
 
+
 # Create the Flask app and configure it
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev'

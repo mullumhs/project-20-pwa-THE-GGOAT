@@ -5,9 +5,10 @@ db = SQLAlchemy()
 class Pokemon(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(32), nullable=True)
+   
     type1 = db.Column(db.String(16), nullable=True)
     type2 = db.Column(db.String(16), nullable=True)
-    shiny = db.Column(db.Boolean, nullale=False, defult=False)
+    shiny = db.Column(db.Boolean, nullable=False, default=False)
     gen = db.Column(db.Integer, nullable=True)
     
 
