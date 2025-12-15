@@ -8,7 +8,11 @@
         {% for pokemon in meow %}
         <div class="col-md-4">
             <div class="card" style="width: 18rem;">
+                {% if pokemon.shiny %}
                 <img src="{{ pokemon.sprites.front_shiny }}" alt="{{ pokemon.name }}">
+            {% else %}
+                <img src="{{ pokemon.sprites.front_default }}" alt="{{ pokemon.name }}">
+            {% endif %}
                 <div class="card-body">
                 <h5 class="card-title">
                     {{ pokemon['name'] }}
@@ -33,7 +37,7 @@
             </div>
         </div>
         {% endfor %}
-    </div>
+    
     <!-- Add your page-specific content here -->
 
 {% endblock %}

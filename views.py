@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from models import db, Pokemon # Also import your database model here
 import requests
+from urllib.parse import quote
 
 # Define your routes inside the 'init_routes' function
 # Feel free to rename the routes and functions as you see fit
@@ -72,39 +73,36 @@ def init_routes(app):
         collection1 = ''
         type1 = request.args.get('type1', '')
         type2 = request.args.get('type2', '')
+        
         print(type1, type2)
-        if not type1 and not type2:
-            print("empty")                     
+        if not type1 and not type2:                     
             collection1 = Pokemon.query.all()
         elif not type2:
             print(type2)
-            collection1 = Pokemon.query.filter(Pokemon.type1 == type1)
+            collection1 = Pokemon.query.filter(Pokemon.type1 == type1).all()
         elif not type1:
-            collection1 = Pokemon.query.filter(Pokemon.type2 == type2)
+            collection1 = Pokemon.query.filter(Pokemon.type2 == type2).all()
         else:
-            collection1 = Pokemon.query.filter(Pokemon.type2 == type2, Pokemon.type1 == type1)
+            collection1 = Pokemon.query.filter(Pokemon.type2 == type2, Pokemon.type1 == type1).all()
         meow = []
         for item in collection1:
-            #Main Data
-            url = f"https://pokeapi.co/api/v2/pokemon/{item.name}"
+            name = (item.name or "").strip().lower()
+            encoded = quote(name, safe='-')
+            url = f"https://pokeapi.co/api/v2/pokemon/{encoded}"
             r = requests.get(url)
-            print(r)
-            data=r.json()
+            data = r.json()
 
-            # Species data for flavor text
-            species_url = f"https://pokeapi.co/api/v2/pokemon-species/{item.name}"
+            species_url = f"https://pokeapi.co/api/v2/pokemon-species/{encoded}"
             r2 = requests.get(species_url)
             species_data = r2.json()
+            entry = next(e['flavor_text'] for e in species_data['flavor_text_entries'] if e['language']['name'] == 'en')
 
-            # Get the first English flavor text entry
-            entry = next(
-                e['flavor_text'] for e in species_data['flavor_text_entries']
-                if e['language']['name'] == 'en'
-            )
-
-            # Attach flavor text to the Pokémon dict
+            # Attach DB fields and chosen sprite
             data['flavor_text'] = entry
-            data['db_id'] = item.id 
-            
+            data['db_id'] = item.id
+            data['shiny'] = bool(item.shiny)            # ensure a boolean
+            # optional: precompute a single sprite URL
+            data['sprite'] = data['sprites']['front_shiny'] if data['shiny'] else data['sprites']['front_default']
+
             meow.append(data)
-        return render_template('team.html', meow=meow)
+            return render_template('team.html', meow=meow)
