@@ -23,12 +23,18 @@ def init_routes(app):
     @app.route('/add', methods=['GET', 'POST'])
     def create_item():
         if request.method == 'POST':
+            shiny_val=request.form['shiny']
+
+            shiny_bool = True if shiny_val == 'true' else False
+            
             new_pokemon = Pokemon(
                 name=request.form['name'],
                 type1=request.form['type1'],
                 type2=request.form['type2'],
-                gen=int(request.form['gen'])
+                gen=int(request.form['gen']),
+                shiny=shiny_bool, 
             )
+            
             db.session.add(new_pokemon)
             db.session.commit()
 
@@ -105,4 +111,4 @@ def init_routes(app):
             data['sprite'] = data['sprites']['front_shiny'] if data['shiny'] else data['sprites']['front_default']
 
             meow.append(data)
-            return render_template('team.html', meow=meow)
+        return render_template('team.html', meow=meow)
