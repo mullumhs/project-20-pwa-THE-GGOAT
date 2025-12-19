@@ -9,7 +9,7 @@ class Pokemon(db.Model):
     type1 = db.Column(db.String(16), nullable=True)
     type2 = db.Column(db.String(16), nullable=True)
     shiny = db.Column(db.Boolean, nullable=False, default=False)
-    gen = db.Column(db.Integer, nullable=True)
+    nick = db.Column(db.String(16), nullable=True)
     
 
     def __repr__(self):

@@ -31,7 +31,7 @@ def init_routes(app):
                 name=request.form['name'],
                 type1=request.form['type1'],
                 type2=request.form['type2'],
-                gen=int(request.form['gen']),
+                nick=request.form['nickname'],
                 shiny=shiny_bool, 
             )
             
