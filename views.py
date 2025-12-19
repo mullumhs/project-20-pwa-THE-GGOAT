@@ -65,13 +65,32 @@ def init_routes(app):
         return redirect(url_for('view_pokemon'))
     
     
-    @app.route('/test', methods=['GET'])
-    def view_team():
-        url = "https://pokeapi.co/api/v2/pokemon/pikachu"  # example with Pikachu
-        response = requests.get(url)
-        data = response.json()
-        print(data.keys())  # shows top-level keys in the JSON
-        return render_template('single.html', data=data)
+    @app.route('/pokemon/<name>', methods=['GET'])
+    def pokemon_details(name):
+        encoded = quote(name.lower(), safe='-')
+
+        # Fetch Pokémon data
+        url = f"https://pokeapi.co/api/v2/pokemon/{encoded}"
+        r = requests.get(url)
+        data = r.json()
+
+        # Fetch species data (for flavor text)
+        species_url = f"https://pokeapi.co/api/v2/pokemon-species/{encoded}"
+        r2 = requests.get(species_url)
+        species_data = r2.json()
+
+        entry = next(
+            e['flavor_text'] for e in species_data['flavor_text_entries']
+            if e['language']['name'] == 'en'
+        )
+
+        data['flavor_text'] = entry
+
+        #  Look up nickname from  database
+        db_pokemon = Pokemon.query.filter_by(name=name).first()
+        data['nickname'] = db_pokemon.nick if db_pokemon and db_pokemon.nick else None
+        data['shiny'] = db_pokemon.shiny if db_pokemon else False
+        return render_template('taken.html', data=data)
     
     @app.route('/team', methods=['GET'])
     

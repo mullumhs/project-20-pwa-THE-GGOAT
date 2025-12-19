@@ -53,7 +53,7 @@
                         <strong>Pokedex Entry:</strong> 
                         {{ pokemon.flavor_text }} </p> 
                         <div class="card-actions"> 
-                            <a href="#" class="btn btn-primary">Go somewhere</a> 
+                            <a href="{{ url_for('pokemon_details', name=pokemon.name) }}" class="btn btn-primary">View Details</a> 
                             <form action="{{url_for('delete_item' , id=pokemon.db_id)}}" 
                                 method="post" style="display: inline"> <button type="submit" 
                                 class="btn btn-danger" 

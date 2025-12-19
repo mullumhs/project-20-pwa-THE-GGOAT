@@ -72,8 +72,8 @@
       /* small spacing for the "Yes"/"No" text */
       .option-text { font-size: 0.95rem; color: #111827; }
     </style>
-  </head>
-  <body>
+  
+ 
     <h1>Pokemon item creator</h1>
 
     <form id="itemForm" method="post" novalidate>
@@ -117,7 +117,7 @@
 
       <div class="mb-3">
         <label class="form-label">Nickname</label>
-        <input id="nickname" name="nickname" type="number" class="form-control" placeholder="Nickname" required min="1">
+        <input id="nickname" name="nickname" type="text" class="form-control" placeholder="Nickname (optional)">
       </div>
 
       <div class="mb-3">
@@ -132,15 +132,44 @@
   const nameInput = document.getElementById('name');
   const type1Input = document.getElementById('type1');
   const type2Input = document.getElementById('type2');
-  const genInput = document.getElementById('gen');
   const submitBtn = document.getElementById('submitBtn');
   const messages = document.getElementById('formMessages');
   const nameSpinner = document.getElementById('nameSpinner');
 
+  // --- NEW: suggestions container and cached names ---
+  const suggestionsBox = document.createElement('div');
+  suggestionsBox.id = 'nameSuggestions';
+  suggestionsBox.style.position = 'absolute';
+  suggestionsBox.style.zIndex = '1000';
+  suggestionsBox.style.background = '#fff';
+  suggestionsBox.style.border = '1px solid rgba(0,0,0,0.15)';
+  // remove top border and flatten top corners so there is no visible gap
+  suggestionsBox.style.borderTop = '0';
+  suggestionsBox.style.borderRadius = '0 0 4px 4px';
+  suggestionsBox.style.boxShadow = '0 4px 8px rgba(0,0,0,0.06)';
+  suggestionsBox.style.maxHeight = '240px';
+  suggestionsBox.style.overflow = 'auto';
+  suggestionsBox.style.display = 'none';
+  suggestionsBox.style.boxSizing = 'border-box';
+  suggestionsBox.setAttribute('role', 'listbox');
+  suggestionsBox.setAttribute('aria-label', 'Pokémon suggestions');
+  // append to body so absolute positioning uses viewport coordinates reliably
+  document.body.appendChild(suggestionsBox);
+
+  // helper to position suggestions exactly under the input with no gap
+  function positionSuggestions() {
+    const rect = nameInput.getBoundingClientRect();
+    suggestionsBox.style.width = rect.width + 'px';
+    suggestionsBox.style.left = rect.left + window.scrollX + 'px';
+    // place top exactly at the input bottom; borderTop is removed so no visible gap
+    suggestionsBox.style.top = rect.bottom + window.scrollY + 'px';
+  }
   // state
   let pokemonExists = false;
   let checking = false;
   let debounceTimer = null;
+  let cachedNames = null;
+  let loadingNames = false;
   const DEBOUNCE_MS = 1000; // wait 1 second after typing stops
 
   // helper: show message(s)
@@ -169,7 +198,7 @@
 
   // validate required fields (except type2)
   function requiredFieldsFilled() {
-    return nameInput.value.trim() !== '' && type1Input.value.trim() !== '' && genInput.value.trim() !== '';
+    return nameInput.value.trim() !== '' && type1Input.value.trim() !== '';
   }
 
   // update submit button enabled/disabled based on state
@@ -186,8 +215,8 @@
       // show which fields are missing
       const missing = [];
       if (nameInput.value.trim() === '') missing.push('Name');
-      if (type1Input.value.trim() === '') missing.push('Type1');
-      if (genInput.value.trim() === '') missing.push('Gen');
+      if (type1Input.value.trim() === '') missing.push('Primary Type');
+  
       setMessage('Please fill out required fields: ' + missing.join(', '), 'danger');
       return;
     }
@@ -280,6 +309,98 @@
     }
   }
 
+  // --- NEW: load all pokemon names once and cache them ---
+  async function loadAllPokemonNames() {
+    if (cachedNames || loadingNames) return;
+    loadingNames = true;
+    try {
+      // fetch a large list once; PokeAPI supports large limit
+      const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=100000');
+      if (!res.ok) {
+        loadingNames = false;
+        return;
+      }
+      const json = await res.json();
+      cachedNames = (json.results || []).map(r => String(r.name).toLowerCase());
+    } catch (e) {
+      // ignore failures; suggestions will simply not appear
+      cachedNames = null;
+    } finally {
+      loadingNames = false;
+    }
+  }
+
+  // --- NEW: show suggestions filtered from cachedNames ---
+  function showSuggestionsFor(value) {
+    const q = String(value || '').trim().toLowerCase();
+    if (!q || !cachedNames || cachedNames.length === 0) {
+      suggestionsBox.style.display = 'none';
+      suggestionsBox.innerHTML = '';
+      return;
+    }
+
+    // filter for names that start with the query (fast, local)
+    const matches = [];
+    // small optimization: stop after 8 matches
+    for (let i = 0, len = cachedNames.length; i < len && matches.length < 8; i++) {
+      const n = cachedNames[i];
+      if (n.startsWith(q)) matches.push(n);
+    }
+
+    if (matches.length === 0) {
+      suggestionsBox.style.display = 'none';
+      suggestionsBox.innerHTML = '';
+      return;
+    }
+
+    // build suggestion items
+    suggestionsBox.innerHTML = '';
+    matches.forEach((name) => {
+      const item = document.createElement('div');
+      item.textContent = name;
+      item.setAttribute('role', 'option');
+      item.style.padding = '6px 10px';
+      item.style.cursor = 'pointer';
+      item.style.whiteSpace = 'nowrap';
+      item.style.textTransform = 'none';
+      item.addEventListener('mousedown', (ev) => {
+        // use mousedown to avoid blur before click
+        ev.preventDefault();
+        nameInput.value = name;
+        // hide suggestions immediately
+        suggestionsBox.style.display = 'none';
+        suggestionsBox.innerHTML = '';
+        // when user selects, proceed to check immediately (bypass debounce)
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
+        // trigger the same behavior as input: allow types to be locked/unlocked
+        pokemonExists = false;
+        type1Input.readOnly = false;
+        type2Input.readOnly = false;
+        type1Input.removeAttribute('aria-readonly');
+        type2Input.removeAttribute('aria-readonly');
+        // run check
+        checkPokemon(name);
+      });
+      item.addEventListener('mouseover', () => {
+        item.style.background = '#f5f5f5';
+      });
+      item.addEventListener('mouseout', () => {
+        item.style.background = '';
+      });
+      suggestionsBox.appendChild(item);
+    });
+
+    // position suggestions box under the input (recompute width/position in case of layout changes)
+    const rect = nameInput.getBoundingClientRect();
+    suggestionsBox.style.minWidth = rect.width + 'px';
+    suggestionsBox.style.left = rect.left + window.scrollX + 'px';
+    suggestionsBox.style.top = rect.bottom + window.scrollY + 'px';
+    suggestionsBox.style.display = '';
+  }
+
   // debounce wrapper
   function scheduleCheck() {
     // clear previous timer
@@ -294,6 +415,8 @@
       type1Input.readOnly = false;
       type2Input.readOnly = false;
       updateSubmitState();
+      // hide suggestions
+      suggestionsBox.style.display = 'none';
       return;
     }
 
@@ -303,7 +426,15 @@
     setMessage('Waiting to check Pokémon name...', 'info');
     updateSubmitState();
 
+    // schedule both suggestion display and the API existence check after debounce
     debounceTimer = setTimeout(() => {
+      // ensure names are loaded (fire-and-forget)
+      loadAllPokemonNames().then(() => {
+        showSuggestionsFor(nameInput.value);
+      }).catch(() => {
+        // ignore
+      });
+
       checkPokemon(nameInput.value);
       debounceTimer = null;
     }, DEBOUNCE_MS);
@@ -320,15 +451,43 @@
     type1Input.removeAttribute('aria-readonly');
     type2Input.removeAttribute('aria-readonly');
 
+    // start loading names early (non-blocking)
+    loadAllPokemonNames();
+
     scheduleCheck();
   });
 
-  // other required fields should trigger validation on input
-  [type1Input, genInput].forEach(el => {
-    el.addEventListener('input', () => {
-      updateSubmitState();
-    });
+  // hide suggestions when input loses focus, but allow clicks on suggestions (use timeout)
+  nameInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      suggestionsBox.style.display = 'none';
+      suggestionsBox.innerHTML = '';
+    }, 150);
   });
+
+  // reposition suggestions on window resize/scroll to keep it aligned
+  window.addEventListener('resize', () => {
+    if (suggestionsBox.style.display !== 'none') {
+      const rect = nameInput.getBoundingClientRect();
+      suggestionsBox.style.left = rect.left + window.scrollX + 'px';
+      suggestionsBox.style.top = rect.bottom + window.scrollY + 'px';
+      suggestionsBox.style.minWidth = rect.width + 'px';
+    }
+  });
+  window.addEventListener('scroll', () => {
+    if (suggestionsBox.style.display !== 'none') {
+      const rect = nameInput.getBoundingClientRect();
+      suggestionsBox.style.left = rect.left + window.scrollX + 'px';
+      suggestionsBox.style.top = rect.bottom + window.scrollY + 'px';
+    }
+  }, true);
+
+  // other required fields should trigger validation on input
+  [type1Input].forEach(el => {
+  el.addEventListener('input', () => {
+    updateSubmitState();
+  });
+});
 
   // initial validation on load
   updateSubmitState();
@@ -350,6 +509,4 @@
   observer.observe(nameSpinner, { attributes: true, attributeFilter: ['style'] });
 })();
 </script>
-  </body>
-</html>
 {% endblock %}

@@ -1,11 +1,90 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ data.name | capitalize }}</title>
-</head>
-<body>
-    <h1>{{ data.name | capitalize }}</h1>
-    <img src="{{ data.sprites.front_default }}" alt="{{ data.name }}">
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+    <style>
+        /* Scope all styles to avoid clashing with Bootstrap */
+.pokemon-details {
+    font-family: system-ui, sans-serif;
+    padding: 2rem;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+/* Title styling */
+.pokemon-details h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+/* Pokémon image */
+.pokemon-details img {
+    display: block;
+    margin: 1rem auto 2rem auto;
+    width: 180px;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+/* Section headers */
+.pokemon-details h2 {
+    font-size: 1.4rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: #34495e;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.25rem;
+}
+
+/* Lists */
+.pokemon-details ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.pokemon-details li {
+    background: #f8fafc;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    transition: background 0.15s ease;
+}
+
+.pokemon-details li:hover {
+    background: #eef2f7;
+}
+
+/* Optional: subtle card-like container */
+.pokemon-details .details-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+    </style>
+
+<div class="pokemon-details">
+
+<div class="details-card">
+     <h1>
+    {% if data.nickname %}
+        {{ data.nickname | capitalize }} ({{ data.name | capitalize }})
+    {% else %}
+        {{ data.name | capitalize }}
+    {% endif %}
+    </h1>
+        {% if data.shiny %} 
+        <img src="{{ data.sprites.front_shiny }}" alt="{{ data.name }}"> 
+            {% else %} 
+            <img src="{{ data.sprites.front_default }}" alt="{{ data.name }}"> 
+        {% endif %} 
 
     <h2>Types:</h2>
     <ul>
@@ -27,4 +106,6 @@
             <li>{{ stat.stat.name }}: {{ stat.base_stat }}</li>
         {% endfor %}
     </ul>
-</body>
+</div>
+
+{% endblock %}
