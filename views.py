@@ -128,6 +128,24 @@ def init_routes(app):
             data['shiny'] = bool(item.shiny)            # ensure a boolean
             # optional: precompute a single sprite URL
             data['sprite'] = data['sprites']['front_shiny'] if data['shiny'] else data['sprites']['front_default']
-
+            TYPE_ICONS = {
+                "fire": "/static/type_icons/fire.png",
+                "water": "/static/type_icons/water.png",
+                "grass": "/static/type_icons/grass.png",
+                "electric": "/static/type_icons/electric.png",
+                "normal": "/static/type_icons/normal.png",
+                "fighting": "/static/type_icons/fighting.png",
+                "psychic": "/static/type_icons/psychic.png",
+                "ghost": "/static/type_icons/ghost.png",
+                "dark": "/static/type_icons/dark.png",
+                "fairy": "/static/type_icons/fairy.png",
+                "steel": "/static/type_icons/steel.png",
+                "rock": "/static/type_icons/rock.png",
+                "ground": "/static/type_icons/ground.png",
+                "ice": "/static/type_icons/ice.png",
+                "dragon": "/static/type_icons/dragon.png",
+                "bug": "/static/type_icons/bug.png",
+                "poison": "/static/type_icons/poison.png"
+            }    
             meow.append(data)
-        return render_template('team.html', meow=meow)
+        return render_template('team.html', meow=meow, type_icons=TYPE_ICONS)

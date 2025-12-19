@@ -3,6 +3,7 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
+  
     <style>
         /* Scope all styles to avoid clashing with Bootstrap */
 .pokemon-details {
@@ -18,6 +19,30 @@
     font-weight: 700;
     margin-bottom: 1rem;
     color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Pencil icon */
+.edit-pencil {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.edit-pencil:hover { opacity: 1; }
+
+/* Inline nickname input */
+.nickname-edit {
+    display: none;
+    margin-left: 0.5rem;
+}
+.nickname-edit input {
+    font-size: 1rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
 }
 
 /* Pokémon image */
@@ -68,6 +93,24 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 
+/* Shiny toggle button */
+.shiny-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+}
+.shiny-toggle button {
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    cursor: pointer;
+}
+.shiny-toggle button.active {
+    background: #f0f9ff;
+    border-color: #60a5fa;
+}
     </style>
 
 <div class="pokemon-details">
@@ -75,15 +118,37 @@
 <div class="details-card">
      <h1>
     {% if data.nickname %}
-        {{ data.nickname | capitalize }} ({{ data.name | capitalize }})
+        <span id="nickname-display">{{ data.nickname | capitalize }}</span>
     {% else %}
-        {{ data.name | capitalize }}
+        <span id="nickname-display">{{ data.name | capitalize }}</span>
     {% endif %}
+    <span style="color:#6b7280;">({{ data.name | capitalize }})</span>
+
+    <!-- Pencil icon to edit nickname -->
+    <svg class="edit-pencil" id="edit-nickname-btn" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" title="Edit nickname">
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#374151"/>
+      <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="#374151"/>
+    </svg>
+
+    <!-- Inline edit form -->
+    <span class="nickname-edit" id="nickname-edit">
+        <input id="nickname-input" type="text" value="{{ data.nickname or '' }}" maxlength="30" />
+        <button id="save-nickname" class="btn btn-sm">Save</button>
+        <button id="cancel-nickname" class="btn btn-sm">Cancel</button>
+    </span>
+
+    <!-- Shiny toggle -->
+    <span class="shiny-toggle" id="shiny-toggle">
+        <span style="font-size:0.9rem;color:#6b7280;">Shiny</span>
+        <button id="shiny-btn" class="{{ 'active' if data.shiny else '' }}">{{ 'Yes' if data.shiny else 'No' }}</button>
+    </span>
+
     </h1>
+
         {% if data.shiny %} 
-        <img src="{{ data.sprites.front_shiny }}" alt="{{ data.name }}"> 
+        <img id="pokemon-image" src="{{ data.sprites.front_shiny }}" alt="{{ data.name }}"> 
             {% else %} 
-            <img src="{{ data.sprites.front_default }}" alt="{{ data.name }}"> 
+            <img id="pokemon-image" src="{{ data.sprites.front_default }}" alt="{{ data.name }}"> 
         {% endif %} 
 
     <h2>Types:</h2>
@@ -107,5 +172,75 @@
         {% endfor %}
     </ul>
 </div>
+
+</div>
+
+<script>
+(function(){
+        // safe rendering of pokemonId
+        const pokemonId = {{ data.id | tojson }};
+
+        const shinyBtn = document.getElementById('shiny-btn');
+        const pokemonImage = document.getElementById('pokemon-image');
+
+        const editBtn = document.getElementById('edit-nickname-btn');
+        const nicknameEdit = document.getElementById('nickname-edit');
+        const nicknameDisplay = document.getElementById('nickname-display');
+        const nicknameInput = document.getElementById('nickname-input');
+        const saveBtn = document.getElementById('save-nickname');
+        const cancelBtn = document.getElementById('cancel-nickname');
+
+        if (editBtn && nicknameEdit && nicknameInput && saveBtn && cancelBtn && nicknameDisplay) {
+            editBtn.addEventListener('click', function(){
+                nicknameEdit.style.display = nicknameEdit.style.display === 'inline-block' ? 'none' : 'inline-block';
+                nicknameInput.focus();
+            });
+            cancelBtn.addEventListener('click', function(){
+                nicknameEdit.style.display = 'none';
+                nicknameInput.value = nicknameDisplay.textContent || '';
+            });
+            saveBtn.addEventListener('click', function(){
+                const newNick = nicknameInput.value.trim();
+                fetch(`/pokemon/${pokemonId}/update_nickname`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname: newNick })
+                }).then(r => r.json()).then(json => {
+                    if (json && json.ok) {
+                        nicknameDisplay.textContent = newNick ? newNick.charAt(0).toUpperCase() + newNick.slice(1) : json.data.name.charAt(0).toUpperCase() + json.data.name.slice(1);
+                        nicknameEdit.style.display = 'none';
+                    } else {
+                        alert('Could not save nickname');
+                    }
+                }).catch(()=> alert('Network error'));
+            });
+        }
+
+        if (shinyBtn && pokemonImage) {
+            shinyBtn.addEventListener('click', function(){
+                const newShiny = !this.classList.contains('active');
+                fetch(`/pokemon/${pokemonId}/update_shiny`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shiny: newShiny })
+                }).then(r => r.json()).then(json => {
+                    if (json && json.ok) {
+                        if (json.data.shiny) {
+                            shinyBtn.classList.add('active');
+                            shinyBtn.textContent = 'Yes';
+                            pokemonImage.src = json.data.sprites.front_shiny;
+                        } else {
+                            shinyBtn.classList.remove('active');
+                            shinyBtn.textContent = 'No';
+                            pokemonImage.src = json.data.sprites.front_default;
+                        }
+                    } else {
+                        alert('Could not update shiny state');
+                    }
+                }).catch(()=> alert('Network error'));
+            });
+        }
+    })();
+</script>
 
 {% endblock %}
