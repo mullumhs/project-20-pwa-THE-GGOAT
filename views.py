@@ -164,7 +164,8 @@ def init_routes(app):
                 "ice": "/static/type_icons/ice.png",
                 "dragon": "/static/type_icons/dragon.png",
                 "bug": "/static/type_icons/bug.png",
-                "poison": "/static/type_icons/poison.png"
+                "poison": "/static/type_icons/poison.png",
+                "flying": "/static/type_icons/flying.png"
             }    
             meow.append(data)
         return render_template('team.html', meow=meow, type_icons=TYPE_ICONS)
