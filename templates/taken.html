@@ -111,11 +111,41 @@
     background: #f0f9ff;
     border-color: #60a5fa;
 }
+
+#shiny-btn {
+  display: inline-block;
+  padding: 4px 8px;           /* smaller size */
+  font-size: 0.85rem;         /* slightly smaller text */
+  line-height: 1;
+  border-radius: 6px;         /* soft rounded corners */
+  border: 1px solid #cfcfcf;  /* subtle border */
+  background: linear-gradient(180deg,#fff,#f3f6fb); /* gentle depth */
+  color: #1f2937;             /* readable dark text */
+  box-shadow: 0 1px 2px rgba(16,24,40,0.06);
+  cursor: pointer;
+  transition: all 120ms ease;
+  vertical-align: middle;
+}
+
+/* Active state (when setShinyUI toggles the active class) */
+#shiny-btn.active {
+  background: linear-gradient(180deg,#e6ffed,#d1f7d6);
+  border-color: #7bd389;
+  color: #065f2d;
+  box-shadow: 0 4px 8px rgba(34,197,94,0.12);
+  transform: translateY(-1px);
+}
+
+/* Focus and keyboard accessibility */
+#shiny-btn:focus {
+  outline: 3px solid rgba(59,130,246,0.18);
+  outline-offset: 2px;
+}
     </style>
 
-<div class="pokemon-details">
+    <div class="pokemon-details" id="pokemon-details" data-db-id="{{ data.db_id }}">
+     <div class="details-card">
 
-<div class="details-card">
      <h1>
     {% if data.nickname %}
         <span id="nickname-display">{{ data.nickname | capitalize }}</span>
@@ -171,76 +201,87 @@
             <li>{{ stat.stat.name }}: {{ stat.base_stat }}</li>
         {% endfor %}
     </ul>
-</div>
+    </div>
+        <script>
+            (function(){
+            const container = document.getElementById('pokemon-details');
+            const dbId = container && container.dataset.dbId;
+            if (!dbId) return;
 
-</div>
-
-<script>
-(function(){
-        // safe rendering of pokemonId
-        const pokemonId = {{ data.id | tojson }};
-
-        const shinyBtn = document.getElementById('shiny-btn');
-        const pokemonImage = document.getElementById('pokemon-image');
-
-        const editBtn = document.getElementById('edit-nickname-btn');
-        const nicknameEdit = document.getElementById('nickname-edit');
-        const nicknameDisplay = document.getElementById('nickname-display');
-        const nicknameInput = document.getElementById('nickname-input');
-        const saveBtn = document.getElementById('save-nickname');
-        const cancelBtn = document.getElementById('cancel-nickname');
-
-        if (editBtn && nicknameEdit && nicknameInput && saveBtn && cancelBtn && nicknameDisplay) {
-            editBtn.addEventListener('click', function(){
-                nicknameEdit.style.display = nicknameEdit.style.display === 'inline-block' ? 'none' : 'inline-block';
-                nicknameInput.focus();
-            });
-            cancelBtn.addEventListener('click', function(){
-                nicknameEdit.style.display = 'none';
-                nicknameInput.value = nicknameDisplay.textContent || '';
-            });
-            saveBtn.addEventListener('click', function(){
-                const newNick = nicknameInput.value.trim();
-                fetch(`/pokemon/${pokemonId}/update_nickname`, {
+            // --- Shiny toggle ---
+            const shinyBtn = document.getElementById('shiny-btn');
+            const img = document.getElementById('pokemon-image');
+            const name = "{{ data.name | lower }}"; // Jinja will render the name
+            function setShinyUI(isShiny){
+                if (shinyBtn) {
+                shinyBtn.classList.toggle('active', !!isShiny);
+                shinyBtn.textContent = isShiny ? 'Yes' : 'No';
+                }
+                if (img) {
+                const shinySrc = "{{ data.sprites.front_shiny }}";
+                const defaultSrc = "{{ data.sprites.front_default }}";
+                img.src = isShiny ? shinySrc : defaultSrc;
+                }
+            }
+            if (shinyBtn) {
+                shinyBtn.addEventListener('click', function(){
+                const newVal = !shinyBtn.classList.contains('active');
+                fetch(`/pokemon/${dbId}/update_shiny`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname: newNick })
-                }).then(r => r.json()).then(json => {
-                    if (json && json.ok) {
-                        nicknameDisplay.textContent = newNick ? newNick.charAt(0).toUpperCase() + newNick.slice(1) : json.data.name.charAt(0).toUpperCase() + json.data.name.slice(1);
-                        nicknameEdit.style.display = 'none';
-                    } else {
-                        alert('Could not save nickname');
-                    }
-                }).catch(()=> alert('Network error'));
-            });
-        }
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({shiny: newVal})
+                }).then(r => r.json()).then(j => {
+                    if (j.ok) setShinyUI(!!j.shiny);
+                    else console.error(j);
+                }).catch(console.error);
+                });
+            }
 
-        if (shinyBtn && pokemonImage) {
-            shinyBtn.addEventListener('click', function(){
-                const newShiny = !this.classList.contains('active');
-                fetch(`/pokemon/${pokemonId}/update_shiny`, {
+            // --- Nickname edit ---
+            const editBtn = document.getElementById('edit-nickname-btn');
+            const nickDisplay = document.getElementById('nickname-display');
+            const nickEditWrap = document.getElementById('nickname-edit');
+            const nickInput = document.getElementById('nickname-input');
+            const saveBtn = document.getElementById('save-nickname');
+            const cancelBtn = document.getElementById('cancel-nickname');
+
+            function showEdit(show){
+                if (!nickEditWrap) return;
+                nickEditWrap.style.display = show ? 'inline-block' : 'none';
+                if (show && nickInput) nickInput.focus();
+            }
+
+            if (editBtn) {
+                editBtn.addEventListener('click', function(){ showEdit(true); });
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function(){ showEdit(false); });
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function(){
+                const newNick = (nickInput && nickInput.value || "").trim().slice(0,30);
+                fetch(`/pokemon/${dbId}/update_nickname`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ shiny: newShiny })
-                }).then(r => r.json()).then(json => {
-                    if (json && json.ok) {
-                        if (json.data.shiny) {
-                            shinyBtn.classList.add('active');
-                            shinyBtn.textContent = 'Yes';
-                            pokemonImage.src = json.data.sprites.front_shiny;
-                        } else {
-                            shinyBtn.classList.remove('active');
-                            shinyBtn.textContent = 'No';
-                            pokemonImage.src = json.data.sprites.front_default;
-                        }
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nickname: newNick})
+                }).then(r => r.json()).then(j => {
+                    if (j.ok) {
+                    nickDisplay.textContent = j.nickname ? j.nickname.charAt(0).toUpperCase() + j.nickname.slice(1) : "{{ data.name | capitalize }}";
+                    showEdit(false);
                     } else {
-                        alert('Could not update shiny state');
+                    console.error(j);
                     }
-                }).catch(()=> alert('Network error'));
-            });
-        }
-    })();
-</script>
+                }).catch(console.error);
+                });
+            }
+
+            // initialize UI from server-rendered value
+            setShinyUI({{ 'true' if data.shiny else 'false' }});
+            })();
+        </script>
+    </div>
+
+
+
 
 {% endblock %}

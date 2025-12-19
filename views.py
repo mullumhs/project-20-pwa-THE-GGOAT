@@ -45,10 +45,28 @@ def init_routes(app):
 
 
 
-    @app.route('/update', methods=['POST'])
-    def update_item():
-        # This route should handle updating an existing item identified by the given ID.
-        return render_template('index.html', message=f'Item updated successfully')
+    @app.route('/pokemon/<int:db_id>/update_shiny', methods=['POST'])
+    def update_shiny(db_id):
+        payload = request.get_json() or {}
+        new_shiny = bool(payload.get('shiny', False))
+        p = Pokemon.query.get(db_id)
+        if not p:
+            return jsonify({"ok": False, "error": "not found"}), 404
+        p.shiny = new_shiny
+        db.session.commit()
+        return jsonify({"ok": True, "shiny": p.shiny})
+
+# New route: update nickname
+    @app.route('/pokemon/<int:db_id>/update_nickname', methods=['POST'])
+    def update_nickname(db_id):
+        payload = request.get_json() or {}
+        new_nick = (payload.get('nickname') or "").strip()[:30]
+        p = Pokemon.query.get(db_id)
+        if not p:
+            return jsonify({"ok": False, "error": "not found"}), 404
+        p.nick = new_nick if new_nick else None
+        db.session.commit()
+        return jsonify({"ok": True, "nickname": p.nick})
 
 
 
@@ -90,6 +108,7 @@ def init_routes(app):
         db_pokemon = Pokemon.query.filter_by(name=name).first()
         data['nickname'] = db_pokemon.nick if db_pokemon and db_pokemon.nick else None
         data['shiny'] = db_pokemon.shiny if db_pokemon else False
+        data['db_id'] = db_pokemon.id if db_pokemon else None
         return render_template('taken.html', data=data)
     
     @app.route('/team', methods=['GET'])
